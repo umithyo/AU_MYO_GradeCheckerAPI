@@ -19,6 +19,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace GradeCheckerAPI.Controllers
 {
@@ -57,11 +58,11 @@ namespace GradeCheckerAPI.Controllers
             request.Method = "POST";
             request.ContentType = "application/json; charset=utf-8";
 
-            request.Headers.Add("authorization", "Basic ZDY3YmUzY2ItMzEwMy00M2I4LTliNTMtYzZiMWNiNzFkZjVi");
+            request.Headers.Add("authorization", appSettings.OneSignalAPIKey);
 
             var obj = new
             {
-                app_id = "baa5455b-0273-49b2-92e5-268d5990c814",
+                app_id = appSettings.OneSignalAppID,
                 contents = new { en = className },
                 headings = new { en = "Possible grade entry"},
                 include_player_ids = new string[] { user.DeviceId.ToString() }
@@ -106,6 +107,8 @@ namespace GradeCheckerAPI.Controllers
             return Ok();
         }
 
+
+
         // POST api/createuser
         [HttpPost("CreateUser")]
         [AllowAnonymous]
@@ -114,16 +117,17 @@ namespace GradeCheckerAPI.Controllers
             if (context.Users.Any(x => x.Username == data["username"].ToString()))
             {
                 var user = context.Users.FirstOrDefault(x => x.Username == data["username"].ToString());
+                
                 user.Username = data["username"].ToString();
-                user.Password = data["password"].ToString();
+                //user.Password = Utils.Encrypt<AesManaged>(data["password"].ToString(), data["Username"].ToString(), DateTime.Now.Ticks.ToString());
             }
             else
             {
                 var user = new User()
                 {
                     Username = data["username"].ToString(),
-                    Password = data["password"].ToString()
-                };
+                    //Password = Utils.Encrypt<AesManaged>(data["password"].ToString(), data["Username"].ToString(), DateTime.Now.Ticks.ToString())
+            };
                 context.Users.Add(user);
             }
 
@@ -140,7 +144,9 @@ namespace GradeCheckerAPI.Controllers
             if (data["username"]!=null && data["password"]!=null)
             {
                 user.Username = data["username"].ToString();
-                user.Password = data["password"].ToString();
+                var salt = Convert.ToBase64String(new byte[32]);
+                user.Password = Utils.Encrypt<AesManaged>(data["password"].ToString(), user.Username, salt);
+                user.Salt = salt;
             }
             user.DeviceId = new Guid(data["DeviceId"].ToString());
             context.SaveChanges();

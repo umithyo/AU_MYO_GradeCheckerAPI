@@ -8,5 +8,7 @@ namespace GradeCheckerAPI.Helpers
     public class AppSettings
     {
         public string Secret { get; set; }
+        public string OneSignalAPIKey { get; set; }
+        public string OneSignalAppID { get; set; }
     }
 }
